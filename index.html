@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiabetesPredict — Dr. Leith Chqoubi</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* === SYSTÈME DE THÈMES === */
+        :root {
+            --primary: #00bfa6;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #0f172a;
+            --border: #e2e8f0;
+            --input-bg: #f1f5f9;
+        }
+
+        [data-theme="dark"] {
+            --primary: #00ffa2;
+            --bg: #020617;
+            --card: #0f172a;
+            --text: #f1f5f9;
+            --border: #1e293b;
+            --input-bg: #1e293b;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            transition: 0.3s ease;
+        }
+
+        /* === BARRE DE NAVIGATION / THÈME === */
+        .nav-tools {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            justify-content: flex-end;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .btn-theme {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+
+        /* === CONTAINER PRINCIPAL === */
+        .container {
+            background: var(--card);
+            max-width: 1100px;
+            width: 95%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+
+        .controls { padding: 40px; border-right: 1px solid var(--border); }
+        .branding h1 { margin: 0; font-size: 1.8rem; font-weight: 900; letter-spacing: -1px; }
+        .branding p { color: var(--primary); font-weight: 700; margin: 5px 0 30px 0; font-size: 0.85rem; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .slider-box { margin-bottom: 15px; }
+        .slider-header { display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 700; opacity: 0.6; margin-bottom: 8px; text-transform: uppercase; }
+        input[type="range"] { width: 100%; accent-color: var(--primary); cursor: pointer; }
+
+        .btn-group { grid-column: span 2; display: flex; gap: 15px; margin-top: 25px; }
+        .btn { flex: 1; padding: 16px; border-radius: 12px; border: none; font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 0.9rem; }
+        .btn-analyze { background: var(--primary); color: #020617; }
+        .btn-pdf { background: transparent; border: 2px solid var(--primary); color: var(--primary); display: none; }
+
+        .diagnostic { padding: 40px; background: rgba(0,0,0,0.02); display: flex; flex-direction: column; justify-content: center; }
+        #chart-wrap { margin-top: 30px; height: 280px; display: none; }
+        
+        .result-head { display: none; margin-bottom: 20px; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* === SECTION À PROPOS === */
+        .about-section {
+            max-width: 800px;
+            width: 90%;
+            text-align: center;
+            padding: 40px 0 80px 0;
+            border-top: 1px solid var(--border);
+        }
+        .about-section h3 { font-size: 1.2rem; margin-bottom: 15px; }
+        .about-section p { font-size: 0.9rem; line-height: 1.6; opacity: 0.7; }
+    </style>
+</head>
+<body data-theme="light">
+
+    <div class="nav-tools">
+        <button class="btn-theme" onclick="toggleTheme()" id="themeBtn">Mode Sombre</button>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="branding">
+                <h1>DiabetesPredict</h1>
+                <p>Développé par Dr. Leith Chqoubi</p>
+            </div>
+
+            <div class="form-grid">
+                <div class="slider-box"><div class="slider-header"><label>Grossesses</label><span id="v_preg">1</span></div><input type="range" id="preg" min="0" max="15" value="1" oninput="sync()"></div>
+                <div class="slider-box"><div class="slider-header"><label>Glycémie</label><span id="v_gluc">120</span></div><input type="range" id="gluc" min="50" max="220" value="120" oninput="sync()"></div>
+                <div class="slider-box"><div class="slider-header"><label>Pression</label><span id="v_bp">70</span></div><input type="range" id="bp" min="40" max="120" value="70" oninput="sync()"></div>
+                <div class="slider-box"><div class="slider-header"><label>Peau</label><span id="v_skin">20</span></div><input type="range" id="skin" min="5" max="80" value="20" oninput="sync()"></div>
+                <div class="slider-box"><div class="slider-header"><label>Insuline</label><span id="v_ins">80</span></div><input type="range" id="ins" min="0" max="400" value="80" oninput="sync()"></div>
+                <div class="slider-box"><div class="slider-header"><label>IMC</label><span id="v_bmi">25.0</span></div><input type="range" id="bmi" min="15" max="60" step="0.1" value="25" oninput="sync()"></div>
+                <div class="slider-box"><div class="slider-header"><label>Hérédité</label><span id="v_dpf">0.47</span></div><input type="range" id="dpf" min="0" max="2.5" step="0.01" value="0.47" oninput="sync()"></div>
+                <div class="slider-box"><div class="slider-header"><label>Âge</label><span id="v_age">30</span></div><input type="range" id="age" min="18" max="95" value="30" oninput="sync()"></div>
+
+                <div class="btn-group">
+                    <button class="btn btn-analyze" onclick="runAnalysis()">ANALYSER</button>
+                    <button class="btn btn-pdf" id="pdfBtn" onclick="generateReport()">RAPPORT PDF</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="diagnostic">
+            <div id="idle" style="text-align: center; opacity: 0.4; font-weight: 600;">En attente des paramètres cliniques...</div>
+            
+            <div class="result-head" id="resHeader">
+                <h2 id="stLabel" style="font-size: 2.2rem; font-weight: 900; margin: 0;">--</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                    <span id="stProb" style="font-weight: 800; color: var(--primary); font-size: 1.4rem;">0%</span>
+                    <span id="stRisk" style="font-size: 0.75rem; font-weight: 900; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px;">--</span>
+                </div>
+            </div>
+
+            <div id="chart-wrap">
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="about-section">
+        <h3>À propos de DiabetesPredict</h3>
+        <p>
+            DiabetesPredict est une plateforme d'analyse prédictive conçue pour aider à l'évaluation des risques liés au diabète. 
+            En utilisant un modèle de régression logistique basé sur des variables biométriques standardisées (Dataset Pima Indians), 
+            l'application fournit une probabilité statistique immédiate. 
+            <br><br>
+            <b>Note :</b> Cet outil est à but académique et préventif. Il ne remplace en aucun cas un diagnostic médical professionnel.
+        </p>
+    </div>
+
+    <script>
+        let chart = null;
+
+        function toggleTheme() {
+            const b = document.body;
+            const current = b.getAttribute('data-theme');
+            const target = current === 'light' ? 'dark' : 'light';
+            b.setAttribute('data-theme', target);
+            document.getElementById('themeBtn').innerText = target === 'light' ? 'Mode Sombre' : 'Mode Clair';
+            if(chart) runAnalysis(); // Rafraîchir les couleurs du graph
+        }
+
+        function sync() {
+            ['preg','gluc','bp','skin','ins','bmi','dpf','age'].forEach(id => {
+                document.getElementById('v_'+id).innerText = document.getElementById(id).value;
+            });
+        }
+
+        function runAnalysis() {
+            const vals = ['preg','gluc','bp','skin','ins','bmi','dpf','age'].map(id => parseFloat(document.getElementById(id).value));
+            const [p, g, b, s, i, m, d, a] = vals;
+
+            // Logique algorithmique
+            let logit = -8.2 + (p*0.11) + (g*0.036) + (m*0.09) + (d*0.9) + (a*0.015);
+            const prob = 1 / (1 + Math.exp(-logit));
+            const finalProb = (prob * 100).toFixed(1);
+
+            document.getElementById('idle').style.display = 'none';
+            document.getElementById('resHeader').style.display = 'block';
+            document.getElementById('chart-wrap').style.display = 'block';
+            document.getElementById('pdfBtn').style.display = 'block';
+
+            const label = document.getElementById('stLabel');
+            const risk = document.getElementById('stRisk');
+            document.getElementById('stProb').innerText = finalProb + "%";
+            
+            if(finalProb > 50) {
+                label.innerText = "Positif"; label.style.color = "#ff4757";
+                risk.innerText = "Risque Élevé";
+            } else {
+                label.innerText = "Négatif"; label.style.color = "var(--primary)";
+                risk.innerText = "Risque Faible";
+            }
+
+            const chartColor = getComputedStyle(document.body).getPropertyValue('--primary').trim();
+            const textColor = getComputedStyle(document.body).getPropertyValue('--text').trim();
+
+            const ctx = document.getElementById('barChart').getContext('2d');
+            if(chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Preg', 'Gluc', 'BP', 'Skin', 'Ins', 'BMI', 'DPF', 'Age'],
+                    datasets: [{
+                        data: vals,
+                        backgroundColor: chartColor,
+                        borderRadius: 8
+                    }]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { 
+                        y: { display: false }, 
+                        x: { ticks: { color: textColor, font: { weight: 'bold' } }, grid: { display: false } } 
+                    }
+                }
+            });
+        }
+
+        function generateReport() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Header Stylisé
+            doc.setFillColor(15, 23, 42); 
+            doc.rect(0, 0, 210, 45, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(24);
+            doc.setFont("helvetica", "bold");
+            doc.text("DIABETESPREDICT REPORT", 20, 28);
+            
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(0, 191, 166);
+            doc.text("CONCEPTION & DÉVELOPPEMENT : DR. LEITH CHQOUBI", 20, 36);
+
+            // Contenu
+            doc.setTextColor(15, 23, 42);
+            doc.setFontSize(16);
+            doc.text("Résultat de l'Analyse Statistique", 20, 65);
+            doc.line(20, 68, 190, 68);
+
+            const isPos = document.getElementById('stLabel').innerText === "Positif";
+            doc.setFontSize(13);
+            doc.text(`Statut final : ${document.getElementById('stLabel').innerText}`, 20, 80);
+            doc.text(`Probabilité : ${document.getElementById('stProb').innerText}`, 20, 90);
+            doc.text(`Niveau de risque : ${document.getElementById('stRisk').innerText}`, 20, 100);
+
+            // Tableau des données
+            doc.text("Détails des Paramètres Biométriques", 20, 125);
+            doc.line(20, 128, 190, 128);
+            
+            const data = [
+                ["Indicateur", "Valeur Mesurée"],
+                ["Grossesses", document.getElementById('preg').value],
+                ["Glycémie", document.getElementById('gluc').value + " mg/dL"],
+                ["Pression Artérielle", document.getElementById('bp').value + " mmHg"],
+                ["IMC", document.getElementById('bmi').value + " kg/m²"],
+                ["Âge", document.getElementById('age').value + " ans"]
+            ];
+
+            let yPos = 140;
+            doc.setFontSize(11);
+            data.forEach((row, index) => {
+                doc.setFont("helvetica", index === 0 ? "bold" : "normal");
+                doc.text(row[0], 25, yPos);
+                doc.text(row[1], 110, yPos);
+                yPos += 10;
+                doc.setDrawColor(230, 230, 230);
+                doc.line(20, yPos-6, 190, yPos-6);
+            });
+
+            doc.save(`DiabetesPredict_Rapport_${new Date().getTime()}.pdf`);
+        }
+        sync();
+    </script>
+</body>
+</html>
